@@ -15,14 +15,15 @@ router.post('/createuser',[
     body('email').isEmail(),
     body('password').isLength({min:5})
 ],async (req,res)=>{
+    let success=false;
     const errors=validationResult(req);
     if(!errors.isEmpty()){
-        return res.status(400).json({errors:errors.array()})
+        return res.status(400).json({success,errors:errors.array()})
     }
     try{
         let user=await User.findOne({email:req.body.email})
         if(user){
-            return res.status(400).json({error:'user already exist'})
+            return res.status(400).json({success,error:'user already exist'})
         }
 
         const salt=await bcrypt.genSalt(10);
@@ -40,7 +41,8 @@ router.post('/createuser',[
         }
         const authToken=jwt.sign(data,JWT_SECRET);
         // console.log(authToken);
-        res.json(authToken);
+        success=true;
+        res.json({success,authToken});
     }  
     catch(error){
         console.error(error.message);
@@ -59,6 +61,7 @@ router.post('/login',[
     body('email').isEmail(),
     body('password','Password cannot be blank').exists()
 ],async (req,res)=>{
+    let success=false;
     const errors=validationResult(req);
     if(!errors.isEmpty()){
         return res.status(400).json({errors:errors.array()})
@@ -68,11 +71,13 @@ router.post('/login',[
     try{
         let user=await User.findOne({email});
         if(!user){
+            success=false;
             return res.status(400).json({error:'Please login with correct credentials'});
         }
         const passwordCompare=await bcrypt.compare(password,user.password);
         if(!passwordCompare){
-            return res.status(400).json({error:'Please login with correct credentials'});
+            success=false;
+            return res.status(400).json({success,error:'Please login with correct credentials'});
         }
 
         const payload={
@@ -82,7 +87,8 @@ router.post('/login',[
         }
 
         const authToken=jwt.sign(payload,JWT_SECRET);
-        res.json({authToken});
+        success=true;
+        res.json({success,authToken});
     }
     catch(err){
         console.log(err.message);
